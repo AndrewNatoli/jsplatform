@@ -1,0 +1,259 @@
+<!--
+	Super Platform Engine Development Funtime!
+	Andrew Natoli
+	September 2013
+	http://AndrewNatoli.com
+-->
+
+<html>
+	<head>
+		<title>Super Platform Engine Development Funtime!</title>
+		<!-- JQuery to use AJAX to pull the level file... -->
+		<script src="http://code.jquery.com/jquery-latest.min.js" type="text/javascript"></script>
+	</head>
+	<body>
+		<canvas id="gameCanvas" width="500" height="500" style="border:1px solid #000; float:left;">
+		</canvas>
+
+
+		<div id="stats" style="float:;">
+		<p align="left">
+			<b>Super Platform Engine Development Funtime!</b>
+			<hr>
+			<b>Player</b><br/>
+			x: <span id="player_x"></span><br/>
+			y: <span id="player_y"></span><br/>
+			v: <span id="player_v"></span><br/>
+			f: <span id="player_f"></span><br/>
+			<br/>
+			Missed Platforms: <span id="missed_platforms"></span><br/>
+		</p>
+		</div>
+
+		<script type="text/javascript">
+			var c, ctx; //Canvas
+			var gameTimer;
+			
+			
+			var platforms=[]; //Rectangular platform objects
+			var missedPlatforms = 0; //The number of platforms player is NOT on top of. (if n != active, player.falling = true)
+			var activePlatforms = 0; //The number of platforms the player is near
+			
+			//Controls
+			var keysDown = []; //What keys have been pressed
+			var KEY_UP 		= 38;	keysDown[KEY_UP] 	= false;
+			var KEY_DOWN	= 40;	keysDown[KEY_DOWN] 	= false;
+			var KEY_LEFT	= 37;	keysDown[KEY_LEFT] 	= false;
+			var KEY_RIGHT 	= 39;	keysDown[KEY_RIGHT]	= false;
+
+			/* Player Object */
+			var player = {
+				x:100,			//x pos
+				y:100,			//y pos
+				xspeed:0,		//Horizontal Speed
+				yspeed:0,		//Veritcal Speed
+				width:25,		//The width of our block
+				falling:true,	//Whether or not we're falling
+				
+				//Control the player's motion...
+				move: function() {
+					//Move right
+					if(keysDown[KEY_RIGHT] == true) {
+						if(this.x+this.width < c.width) {
+							this.xspeed = 1;
+						}
+						else
+							this.xspeed = 0;
+					}
+					//Move left
+					if(keysDown[KEY_LEFT] == true) {
+						if (this.x > 0) {
+							this.xspeed = -1;
+						}
+						else
+							this.xspeed = 0;
+					}
+					//Not moving horizontally...
+					if (keysDown[KEY_LEFT] == false && keysDown[KEY_RIGHT] == false)
+						this.xspeed =0;
+						
+					//Jump [need to revise this later]
+					if(keysDown[KEY_UP] && this.falling == false) {
+						this.yspeed = -5;
+					}
+					
+					//Control our falling
+					if(this.falling == true)
+						this.yspeed+=.2;
+					else if(this.falling == false && keysDown[KEY_UP] == false)
+						this.yspeed = 0;
+					
+					//Finally, update our position based on speed
+					this.x+=this.xspeed;
+					this.y+=this.yspeed;		
+					
+				},
+				
+				//Check if we've collided with a platform or we are falling. The individual platforms do collision detection now
+				platformCollision: function() {
+					if (missedPlatforms >= activePlatforms)
+						this.falling = true;
+				},
+				
+				//Step / Update Event
+				step: function() {
+					this.platformCollision();
+					this.move();
+				},
+				
+				//Draw
+				draw: function() {
+					ctx.fillStyle="#00FF00";
+					ctx.fillRect(this.x,this.y,this.width,this.width);
+				}
+			};
+
+
+			//Generic rectangular platform
+			var platform = function(px,py,pw,ph) {
+				this.x 	=	+px;
+				this.y 	=	+py;
+				this.width = +pw;
+				this.height= +ph;
+				this.color = '#000000';
+				this.active = true;
+				this.step = function() {
+				
+					//Check if player is close to platform before we calculate distance.
+					if(distance_between(this,player) > this.width + player.width + player.xspeed + player.yspeed) {
+						this.color = "#0000FF";
+						if(this.active == true) {
+							activePlatforms-=1;
+							this.active = false;
+						}
+						return;
+					}
+					else {
+						if(this.active == false) {
+							activePlatforms+=1;
+							this.active = true;
+						}
+					}
+						 
+					//Check if the player is on top of the platform
+					if ((player.x <= this.x+this.width) && player.x+player.width > this.x && player.y+player.width >= this.y-2 && player.y+player.width <= this.y+this.height) {
+						player.falling = false;
+						this.color="#00CC00";
+					}
+					else {
+						missedPlatforms++;
+						this.color="#CC0000";
+					}
+					
+					//Check if player is hitting their head...
+					if ((player.x <= this.x+this.width) && player.x+player.width > this.x && player.y+player.width > this.y+this.height && player.y <= this.y+this.height) {
+						player.yspeed = player.yspeed*-1;
+						player.falling=true;
+					}
+				};
+				this.draw = function() {
+						ctx.fillStyle=this.color;
+						ctx.fillRect(this.x,this.y,this.width,this.height);
+				};
+			};
+
+			function init() {
+				c=document.getElementById("gameCanvas");
+				ctx=c.getContext("2d");
+				step();
+				gameTimer = setInterval(function() { step(); draw(); },10);
+				document.addEventListener("keydown", function(e) {
+					keysDown[e.keyCode] = true;
+				},false); 
+				
+				document.addEventListener("keyup", function(e) {
+					keysDown[e.keyCode] = false;
+				},false);
+			}
+
+			function UpdateDebug() {
+				document.getElementById("player_x").innerHTML=player.x;
+				document.getElementById("player_y").innerHTML=player.y;
+				document.getElementById("player_v").innerHTML=player.xspeed + ", " + player.yspeed;
+				if (player.falling == true)
+					document.getElementById("player_f").innerHTML="true";
+				else
+					document.getElementById("player_f").innerHTML="false";
+				document.getElementById("missed_platforms").innerHTML=missedPlatforms + " of " + activePlatforms;
+			}
+
+			function step() {
+				//Reset the draw interval
+				//window.clearInterval("gameTimer");
+							
+				missedPlatforms=0;
+				for(var i=0; i<platforms.length; i++) {
+					platforms[i].step();
+				}	
+				
+				player.step();
+			}
+
+			function draw() {
+				//Reset the draw buffer
+				ctx.fillStyle="#FFFFFF";
+				ctx.fillRect(0,0,c.width,c.height);
+
+
+				//Now draw :D
+				player.draw();
+				for(i=0; i<platforms.length; i++) {
+					platforms[i].draw();
+				}
+				
+				UpdateDebug();
+			}
+			
+			//Calculate and return the distance between two objects with x and y coordinates
+			function distance_between(object1,object2) {
+				return distance = Math.sqrt(Math.pow(object2.x-object1.x,2) + Math.pow(object2.y-object1.y,2));
+			}
+
+
+
+			$(document).ready(function() {
+				$.ajax({
+					type:"GET",
+					url:"level.txt",
+					dataType:"text",
+					success: function(data) { loadLevel(data); }
+				});
+				throw('Loading');
+			});
+
+			function loadLevel(allText) {
+				var allTextLines = allText.split(/\r\n|\n/);
+    			var headers = allTextLines[0].split(',');
+				for(var i=0; i<allTextLines.length; i++) {
+					var data = allTextLines[i].split(',');
+					if(data.length == headers.length) {
+						var block = [];
+						platforms.push(new platform(data[0],data[1],data[2],data[3]));
+						activePlatforms++;
+						/*
+						for (var j=0; j<headers.length; j++) {
+							//block.push(headers[j]+":"+data[j]);
+							block.push(data[j]);
+						}
+						platforms.push(new platform(block[0],block[1],block[2],block[3]));
+						*/
+					}
+				}
+			}
+
+
+
+			init();
+		</script>
+	</body>
+</html>
