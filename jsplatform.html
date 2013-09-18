@@ -9,7 +9,7 @@
 	<head>
 		<title>Super Platform Engine Development Funtime!</title>
 		<!-- JQuery to use AJAX to pull the level file... -->
-		<script src="http://code.jquery.com/jquery-latest.min.js" type="text/javascript"></script>
+		<script src="jquery-2.0.3.min.js" type="text/javascript"></script>
 	</head>
 	<body>
 		<canvas id="gameCanvas" width="500" height="500" style="border:1px solid #000; float:left;">
@@ -125,7 +125,7 @@
 				this.step = function() {
 				
 					//Check if player is close to platform before we calculate distance.
-					if(distance_between(this,player) > this.width + player.width + player.xspeed + player.yspeed) {
+					if(distance_between(this,player) > this.width + this.height) {
 						this.color = "#0000FF";
 						if(this.active == true) {
 							activePlatforms-=1;
@@ -143,6 +143,9 @@
 					//Check if the player is on top of the platform
 					if ((player.x <= this.x+this.width) && player.x+player.width > this.x && player.y+player.width >= this.y-2 && player.y+player.width <= this.y+this.height) {
 						player.falling = false;
+						//Make sure the player hasn't partially fallen through the platform
+						if(player.y+player.width > this.y)
+							player.y = this.y-player.width;
 						this.color="#00CC00";
 					}
 					else {
@@ -151,10 +154,19 @@
 					}
 					
 					//Check if player is hitting their head...
-					if ((player.x <= this.x+this.width) && player.x+player.width > this.x && player.y+player.width > this.y+this.height && player.y <= this.y+this.height) {
+					//X Collision detections = (Player is wider than platform), (left corner), (right corner), (in between)
+					if (((player.x <= this.x && player.x+player.width >= this.x+this.width) || (player.x < this.x && player.x+player.width >= this.x) || (player.x < this.x+this.width && player.x+player.width >= this.x+this.width) || (player.x >= this.x && player.x+player.width <= this.x+this.width)) && (player.y+player.width > this.y+this.height && player.y <= this.y+this.height)) {
 						player.yspeed = player.yspeed*-1;
-						player.falling=true;
 					}
+
+					//Check if the player is hitting the left side of the platform
+					if (distance_between(this,player) < player.width+2 && (player.x+player.width >= this.x-2 && player.x < this.x) && ( player.y+player.width >= this.y || (player.y >= this.y && player.y+player.width <= this.y+this.height) || (player.y+player.width >= this.y+this.height && player.y <= this.y+this.height))) {
+						if(keysDown[KEY_RIGHT] == true) {
+							player.xspeed = 0;
+							keysDown[KEY_RIGHT] = false;
+						}
+					}
+
 				};
 				this.draw = function() {
 						ctx.fillStyle=this.color;
@@ -228,7 +240,6 @@
 					dataType:"text",
 					success: function(data) { loadLevel(data); }
 				});
-				throw('Loading');
 			});
 
 			function loadLevel(allText) {
