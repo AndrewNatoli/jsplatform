@@ -185,7 +185,7 @@ Platform.prototype.step = function() {
 		}
 
 		//Check if the player is hitting the left side of the platform
-		if (distance_between(this,player) < player.width*2 && (player.x+player.width >= this.x-2 && player.x < this.x) && ( player.y+player.width > this.y || (player.y >= this.y && player.y+player.width <= this.y+this.height) || (player.y+player.width >= this.y+this.height && player.y <= this.y+this.height))) {
+		if (distance_between(this,player) < player.width*2 && (player.y < this.y+this.height) && (player.x+player.width >= this.x-2 && player.x < this.x) && ( player.y+player.width > this.y || (player.y >= this.y && player.y+player.width <= this.y+this.height) || (player.y+player.width >= this.y+this.height && player.y <= this.y+this.height))) {
 			if(keysDown[KEY_RIGHT] == true) {
 				player.xspeed = 0;
 				keysDown[KEY_RIGHT] = false;
@@ -195,7 +195,7 @@ Platform.prototype.step = function() {
 		}
 
 		//Check if the player is hitting the right side of the platform
-		if (distance_between(this,player) < player.width*(player.width*2) && (player.x >= this.x+this.width && player.x < this.x+this.width+2) && ( player.y+player.width >= this.y || (player.y >= this.y && player.y+player.width <= this.y+this.height) || (player.y+player.width >= this.y+this.height && player.y <= this.y+this.height))) {
+		if (distance_between(this,player) < player.width*(player.width*2) && (player.y < this.y+this.height) && (player.x >= this.x+this.width && player.x < this.x+this.width+2) && ( player.y+player.width >= this.y || (player.y >= this.y && player.y+player.width <= this.y+this.height) || (player.y+player.width >= this.y+this.height && player.y <= this.y+this.height))) {
 			if(keysDown[KEY_LEFT] == true) {
 				player.xspeed = 0;
 				keysDown[KEY_LEFT] = false;
@@ -252,14 +252,20 @@ var MovingPlatform = function(pid,px,py,pw,ph,pdir,pspd,pendmove) {
 	this.xmovement = function() {
 		switch(this.reverse) {
 			case false:
-				if(this.x+this.width < this.endpos)
+				if(this.x+this.width < this.endpos) {
 					this.x += this.speed;
+					if(collisionIndex == this.id && player.falling == false && keysDown[KEY_LEFT] == false)
+						player.x +=this.speed;
+				}
 				else
 					this.reverse = true;
 			break;
 			case true:
-				if(this.x > this.startx)
+				if(this.x > this.startx) {
 					this.x -= this.speed;
+					if(collisionIndex == this.id && player.falling == false && keysDown[KEY_RIGHT] == false)
+						player.x -=this.speed;
+				}
 				else
 					this.reverse = false;
 			break;
