@@ -1,5 +1,6 @@
 var c, ctx; //Canvas
 var gameTimer;
+var startTime;
 
 //Debug
 var collisionDebug = "";
@@ -18,13 +19,20 @@ var KEY_DOWN	= 40;	keysDown[KEY_DOWN] 	= false;
 var KEY_LEFT	= 37;	keysDown[KEY_LEFT] 	= false;
 var KEY_RIGHT 	= 39;	keysDown[KEY_RIGHT]	= false;
 
+//Settings
+var limitFPS = 150;
+var fixedStepInterval = 20.00;	// Milliseconds between each step
+var fixedStepTime = 0;
+var lastDrawTime = 0;
+var lastUpdateTime = 0;
+var running = true;
 
 //Game startup 
 function init() {
 	c=document.getElementById("gameCanvas");
 	ctx=c.getContext("2d");
-	step();
-	gameTimer = setInterval(function() { step(); draw(); },10);
+	startTime = (new Date()).valueOf();
+	
 	document.addEventListener("keydown", function(e) {
 		keysDown[e.keyCode] = true;
 	},false); 
@@ -32,6 +40,49 @@ function init() {
 	document.addEventListener("keyup", function(e) {
 		keysDown[e.keyCode] = false;
 	},false);
+	
+	mainLoop();
+}
+
+/**
+ * Main loop for the game handles drawing and updates
+ * Simulates Unity's way of updating (http://answers.unity3d.com/questions/10993/whats-the-difference-between-update-and-fixedupdat.html)
+ * - FixedStep will always get called at a specific time each second (determined by fixedStepTime)
+ * - Draw and update get called as frequently as they can afterwards
+ *coo
+ */
+function mainLoop(){
+	var currentTIme = gameTime();
+	while (fixedStepTime < currentTIme){
+		fixedStep();
+		fixedStepTime += fixedStepInterval;
+	}
+	
+	var drawTime = gameTime() - lastDrawTime;
+	if (limitFPS > 0){
+		if (drawTime >= 1000 / limitFPS){
+			draw(drawTime);
+			lastDrawTime = gameTime();
+		}
+	}
+	else{
+		draw(drawTime);
+		lastDrawTime = gameTime();
+	}
+	
+	var deltaTime = (gameTime() - lastUpdateTime) / 1000;
+	step(deltaTime);
+	lastUpdateTime = gameTime();
+	
+	setTimeout(function() { mainLoop(); }, 1);
+}
+
+/**
+ * Returns total amount of execution time since 
+ * the game started in milliseconds
+ */
+function gameTime(){
+	return (new Date()).valueOf() - startTime;
 }
 
 /* Player Object */
@@ -44,11 +95,11 @@ var player = {
 	falling:true,	//Whether or not we're falling
 	
 	//Control the player's motion...
-	move: function() {
+	move: function(deltaTime) {
 		//Move right
 		if(keysDown[KEY_RIGHT] == true) {
 			if(this.x+this.width < c.width) {
-				this.xspeed = 1;
+				this.xspeed = 5;
 			}
 			else
 				this.xspeed = 0;
@@ -56,29 +107,29 @@ var player = {
 		//Move left
 		if(keysDown[KEY_LEFT] == true) {
 			if (this.x > 0) {
-				this.xspeed = -1;
+				this.xspeed = -5;
 			}
 			else
 				this.xspeed = 0;
 		}
 		//Not moving horizontally...
 		if (keysDown[KEY_LEFT] == false && keysDown[KEY_RIGHT] == false)
-			this.xspeed =0;
+			this.xspeed = 0;
 			
 		//Jump [need to revise this later]
 		if(keysDown[KEY_UP] && this.falling == false) {
-			this.yspeed = -5;
+			this.yspeed = -10;
 		}
 		
 		//Control our falling
 		if(this.falling == true) //Start Falling
-			this.yspeed+=.2;
+			this.yspeed+=2.0;
 		else if(this.falling == false && keysDown[KEY_UP] == false) //Stop Falling
 			this.yspeed = 0;
 		
 		//Finally, update our position based on speed
-		this.x+=this.xspeed;
-		this.y+=this.yspeed;		
+		this.x+=this.xspeed * deltaTime;
+		this.y+=this.yspeed * deltaTime;		
 		
 	},
 	
@@ -89,9 +140,9 @@ var player = {
 	},
 	
 	//Step / Update Event
-	step: function() {
+	step: function(deltaTime) {
 		this.platformCollision();
-		this.move();
+		this.move(deltaTime);
 	},
 	
 	//Draw
@@ -296,7 +347,10 @@ var MovingPlatform = function(pid,px,py,pw,ph,pdir,pspd,pendmove) {
 
 MovingPlatform.prototype = Platform;
 
-function step() {
+function fixedStep(){
+}
+
+function step(deltaTime) {
 	//Reset the draw interval
 	//window.clearInterval("gameTimer");		
 	missedPlatforms=0;
@@ -304,10 +358,10 @@ function step() {
 		platforms[i].startstep();
 		platforms[i].step();
 	}	
-	player.step();
+	player.step(deltaTime);
 }
 
-function draw() {
+function draw(drawTime) {
 	//Reset the draw buffer
 	ctx.fillStyle="#FFFFFF";
 	ctx.fillRect(0,0,c.width,c.height);
@@ -316,7 +370,7 @@ function draw() {
 	for(i=0; i<platforms.length; i++) {
 		platforms[i].draw();
 	}			
-	UpdateDebug();
+	UpdateDebug(drawTime);
 }
 
 //Calculate and return the distance between two objects with x and y coordinates
@@ -324,10 +378,11 @@ function distance_between(object1,object2) {
 	return distance = Math.sqrt(Math.pow(object2.x-object1.x,2) + Math.pow(object2.y-object1.y,2));
 }
 
-function UpdateDebug() {
+function UpdateDebug(drawTime) {
 	document.getElementById("player_x").innerHTML=player.x;
 	document.getElementById("player_y").innerHTML=player.y;
 	document.getElementById("player_v").innerHTML=player.xspeed + ", " + player.yspeed;
+	document.getElementById("fps").innerHTML = Math.round(1000 / +drawTime);
 
 	if (player.falling == true)
 		document.getElementById("player_f").innerHTML="true";
