@@ -99,7 +99,7 @@ var player = {
 		//Move right
 		if(keysDown[KEY_RIGHT] == true) {
 			if(this.x+this.width < c.width) {
-				this.xspeed = 5;
+				this.xspeed = 100;
 			}
 			else
 				this.xspeed = 0;
@@ -107,7 +107,7 @@ var player = {
 		//Move left
 		if(keysDown[KEY_LEFT] == true) {
 			if (this.x > 0) {
-				this.xspeed = -5;
+				this.xspeed = -100;
 			}
 			else
 				this.xspeed = 0;
@@ -118,12 +118,12 @@ var player = {
 			
 		//Jump [need to revise this later]
 		if(keysDown[KEY_UP] && this.falling == false) {
-			this.yspeed = -10;
+			this.yspeed = -400;
 		}
 		
 		//Control our falling
 		if(this.falling == true) //Start Falling
-			this.yspeed+=2.0;
+			this.yspeed+=6.0;
 		else if(this.falling == false && keysDown[KEY_UP] == false) //Stop Falling
 			this.yspeed = 0;
 		
