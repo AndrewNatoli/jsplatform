@@ -20,12 +20,16 @@ var KEY_LEFT	= 37;	keysDown[KEY_LEFT] 	= false;
 var KEY_RIGHT 	= 39;	keysDown[KEY_RIGHT]	= false;
 
 //Settings
-var limitFPS = 150;
-var fixedStepInterval = 20.00;	// Milliseconds between each step
+var limitFPS = Math.floor(1000 / 100);		// 1000 / (fps max) - set to 0 for no limit
+var fixedStepInterval = 20.00;				// Milliseconds between each step
 var fixedStepTime = 0;
 var lastDrawTime = 0;
 var lastUpdateTime = 0;
 var running = true;
+
+var fps = 0;
+var fpsCounter = 0;
+var fpsTimer = 0;
 
 //Game startup 
 function init() {
@@ -60,7 +64,7 @@ function mainLoop(){
 	
 	var drawTime = gameTime() - lastDrawTime;
 	if (limitFPS > 0){
-		if (drawTime >= 1000 / limitFPS){
+		if (drawTime >= limitFPS){
 			draw(drawTime);
 			lastDrawTime = gameTime();
 		}
@@ -99,7 +103,7 @@ var player = {
 		//Move right
 		if(keysDown[KEY_RIGHT] == true) {
 			if(this.x+this.width < c.width) {
-				this.xspeed = 100;
+				this.xspeed = 125;
 			}
 			else
 				this.xspeed = 0;
@@ -107,7 +111,7 @@ var player = {
 		//Move left
 		if(keysDown[KEY_LEFT] == true) {
 			if (this.x > 0) {
-				this.xspeed = -100;
+				this.xspeed = -125;
 			}
 			else
 				this.xspeed = 0;
@@ -118,12 +122,12 @@ var player = {
 			
 		//Jump [need to revise this later]
 		if(keysDown[KEY_UP] && this.falling == false) {
-			this.yspeed = -400;
+			this.yspeed = -280;
 		}
 		
 		//Control our falling
 		if(this.falling == true) //Start Falling
-			this.yspeed+=6.0;
+			this.yspeed+=2.0;
 		else if(this.falling == false && keysDown[KEY_UP] == false) //Stop Falling
 			this.yspeed = 0;
 		
@@ -240,6 +244,7 @@ Platform.prototype.step = function() {
 			if(keysDown[KEY_RIGHT] == true) {
 				player.xspeed = 0;
 				keysDown[KEY_RIGHT] = false;
+				
 				collisionDebug="LEFT";
 				collisionIndex=this.id;
 			}
@@ -362,6 +367,14 @@ function step(deltaTime) {
 }
 
 function draw(drawTime) {
+	fpsCounter++;
+	
+	if (fpsTimer == 0 || gameTime() - fpsTimer > 1000){
+		fpsTimer = gameTime();
+		fps = fpsCounter;
+		fpsCounter = 0;
+	}
+
 	//Reset the draw buffer
 	ctx.fillStyle="#FFFFFF";
 	ctx.fillRect(0,0,c.width,c.height);
@@ -382,7 +395,7 @@ function UpdateDebug(drawTime) {
 	document.getElementById("player_x").innerHTML=player.x;
 	document.getElementById("player_y").innerHTML=player.y;
 	document.getElementById("player_v").innerHTML=player.xspeed + ", " + player.yspeed;
-	document.getElementById("fps").innerHTML = Math.round(1000 / +drawTime);
+	document.getElementById("fps").innerHTML = fps;
 
 	if (player.falling == true)
 		document.getElementById("player_f").innerHTML="true";
