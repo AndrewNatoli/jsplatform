@@ -97,6 +97,7 @@ var player = {
 	yspeed:0,		//Veritcal Speed
 	width:25,		//The width of our block
 	falling:true,	//Whether or not we're falling
+	gravity:6.0,
 	
 	//Control the player's motion...
 	move: function(deltaTime) {
@@ -122,12 +123,12 @@ var player = {
 			
 		//Jump [need to revise this later]
 		if(keysDown[KEY_UP] && this.falling == false) {
-			this.yspeed = -280;
+			this.yspeed = -480;
 		}
 		
 		//Control our falling
 		if(this.falling == true) //Start Falling
-			this.yspeed+=2.0;
+			this.yspeed+=this.gravity;
 		else if(this.falling == false && keysDown[KEY_UP] == false) //Stop Falling
 			this.yspeed = 0;
 		
@@ -233,8 +234,6 @@ Platform.prototype.step = function() {
 		//X Collision detections = (Player is wider than platform), (left corner), (right corner), (in between)
 		if (((player.x <= this.x && player.x+player.width >= this.x+this.width) || (player.x < this.x && player.x+player.width >= this.x) || (player.x < this.x+this.width && player.x+player.width >= this.x+this.width) || (player.x >= this.x && player.x+player.width <= this.x+this.width)) && (player.y+player.width > this.y+this.height && player.y <= this.y+this.height)) {
 			player.yspeed = player.yspeed*-1;
-
-
 			collisionDebug="BOTTOM";
 			collisionIndex=this.id;
 		}
@@ -259,7 +258,6 @@ Platform.prototype.step = function() {
 				collisionIndex=this.id;
 			}
 		}
-
 	};
 	
 //Platform draw event
@@ -300,8 +298,7 @@ var MovingPlatform = function(pid,px,py,pw,ph,pdir,pspd,pendmove) {
 	this.startstep = function() {
 		switch(this.direction) {
 			case 1:		this.xmovement(); 	break;
-			case 2: 	this.ymovement();		break;
-			default: 	alert(this.direction); break;
+			case 2: 	this.ymovement();	break;
 		}
 	};
 
@@ -327,6 +324,20 @@ var MovingPlatform = function(pid,px,py,pw,ph,pdir,pspd,pendmove) {
 			break;
 			default: throw("Bad direction value (platform id:" + this.id + ")"); 
 			break;
+		}
+
+		//If we collide with the player, push them.
+		if(this.reverse == true) { //If moving left, push them left
+			if(player.y<this.y+this.height-1 && player.y+player.width > this.y+this.height && player.x+player.width > this.x && player.x+player.width < this.x+this.width) {
+				player.x = this.x-player.width; 
+				player.y += player.gravity/5; 
+			}
+		}
+		else { //Push them right if moving right
+			if(player.y<this.y+this.height-1 && player.y+player.width > this.y+this.height && player.x < this.x+this.width && player.x+player.width > this.x+this.width) {
+				player.x = this.x+this.width+1;
+				player.y += player.gravity/5;
+			}
 		}
 	};
 
