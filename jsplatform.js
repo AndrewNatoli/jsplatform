@@ -12,6 +12,10 @@ var platforms=[]; //Rectangular platform objects
 var missedPlatforms = 0; //The number of platforms player is NOT on top of. (if n != active, player.falling = true)
 var activePlatforms = 0; //The number of platforms the player is near
 
+//Collectables
+var collectables=[];
+var score = 0;
+
 //Controls
 var keysDown = []; //What keys have been pressed
 var KEY_UP 		= 38;	keysDown[KEY_UP] 	= false;
@@ -89,6 +93,19 @@ function gameTime(){
 	return (new Date()).valueOf() - startTime;
 }
 
+/* Camera Object */
+var Camera = {
+	x:0,
+	y:0,
+	width:720,
+	height:480,
+
+	step: function(deltaTime) {
+		this.x = (player.x-(this.width/2));
+		this.y = (player.y-(this.height/2));
+	}
+}
+
 /* Player Object */
 var player = {
 	x:100,			//x pos
@@ -102,21 +119,11 @@ var player = {
 	//Control the player's motion...
 	move: function(deltaTime) {
 		//Move right
-		if(keysDown[KEY_RIGHT] == true) {
-			if(this.x+this.width < c.width) {
-				this.xspeed = 125;
-			}
-			else
-				this.xspeed = 0;
-		}
+		if(keysDown[KEY_RIGHT] == true)
+			this.xspeed = 125;
 		//Move left
-		if(keysDown[KEY_LEFT] == true) {
-			if (this.x > 0) {
-				this.xspeed = -125;
-			}
-			else
-				this.xspeed = 0;
-		}
+		if(keysDown[KEY_LEFT] == true)
+			this.xspeed = -125;
 		//Not moving horizontally...
 		if (keysDown[KEY_LEFT] == false && keysDown[KEY_RIGHT] == false)
 			this.xspeed = 0;
@@ -153,10 +160,36 @@ var player = {
 	//Draw
 	draw: function() {
 		ctx.fillStyle="#00FF00";
-		ctx.fillRect(this.x,this.y,this.width,this.width);
+		ctx.fillRect(this.x-Camera.x,this.y-Camera.y,this.width,this.width);
 	}
 };
 
+var Collectable = function(pid,px,py,value) {
+	this.id 	=	pid;
+	this.x 		= 	+px;
+	this.y 		= 	+py;
+	this.value  = 	+value;
+	this.width 	= 	10;
+	this.height = 	10;
+	this.color 	=	'#DDDD00';
+	this.active = 	true;
+
+	this.step = function(deltaTime) {
+		if(this.active == true) {
+			if(distance_between(this,player) < player.width) {
+				score += this.value;
+				this.active = false;
+			}
+		}
+	}
+
+	this.draw = function() {
+		if(this.active == true) {
+			ctx.fillStyle=this.color;
+			ctx.fillRect(this.x-Camera.x,this.y-Camera.y,this.width,this.height);
+		}
+	}
+}
 
 //Generic rectangular platform
 var Platform = function(pid,px,py,pw,ph) {
@@ -262,8 +295,10 @@ Platform.prototype.step = function() {
 	
 //Platform draw event
 Platform.prototype.draw = function() {
-			ctx.fillStyle=this.color;
-			ctx.fillRect(this.x,this.y,this.width,this.height);
+//	if(this.x > Camera.x && this.x < Camera.x+Camera.width) {
+		ctx.fillStyle=this.color;
+		ctx.fillRect(this.x-Camera.x,this.y-Camera.y,this.width,this.height);
+//	}
 };
 
 
@@ -374,7 +409,11 @@ function step(deltaTime) {
 		platforms[i].startstep();
 		platforms[i].step();
 	}	
+	for(var i=0; i<collectables.length; i++) {
+		collectables[i].step();
+	}
 	player.step(deltaTime);
+	Camera.step(deltaTime);
 }
 
 function draw(drawTime) {
@@ -393,7 +432,10 @@ function draw(drawTime) {
 	player.draw();
 	for(i=0; i<platforms.length; i++) {
 		platforms[i].draw();
-	}			
+	}		
+	for(i=0; i<collectables.length; i++) {
+		collectables[i].draw();
+	}	
 	UpdateDebug(drawTime);
 }
 
@@ -416,6 +458,7 @@ function UpdateDebug(drawTime) {
 	document.getElementById("missed_platforms").innerHTML=missedPlatforms + " of " + activePlatforms;
 	document.getElementById("collision_debug").innerHTML=collisionDebug;
 	document.getElementById("collision_index").innerHTML=collisionIndex;
+	document.getElementById("score").innerHTML=score;
 }
 
 function loadLevel(allText) {
@@ -429,18 +472,24 @@ function loadLevel(allText) {
 				//Create a platform
 				case "0":
 					platforms.push(new Platform(i,data[1],data[2],data[3],data[4]));	
+					activePlatforms++;
 				break;
 
 				//Create a moving platform
 				case "1":
 					platforms.push(new MovingPlatform(i,data[1],data[2],data[3],data[4],data[5],data[6],data[7],data[8]));	
+					activePlatforms++;
+				break;
+
+				case "2":
+					//							   pid px 	  py 	  value
+					collectables.push(new Collectable(i,data[1],data[2],data[3]));
 				break;
 
 				default:
 					alert("Unknown platform type at line " + i);
 				break;
 			}
-			activePlatforms++;
 		}
 	}
 }
