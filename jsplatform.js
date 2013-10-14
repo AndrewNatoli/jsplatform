@@ -1,14 +1,24 @@
+/**
+ * JSPlatform
+ * A simple 2D platform engine using javascript and HTML canvas. 
+ * Written by Andrew Natoli with contributions from KJ Lawrence
+ * Email:	AndrewNatoli@AndrewNatoli.com
+ * Web:		http://AndrewNatoli.com
+ * 
+ * Feel free to contribute! :D
+ */
+
 var c, ctx; //Canvas
 var gameTimer;
 var startTime;
 
 //Debug
 var collisionDebug = "";
-var collisionIndex = -1;
+var collisionIndex = -1; //Used to tell us the platform ID the player object came in contact with
 
 
 //Collision detection and platform objects
-var platforms=[]; //Rectangular platform objects
+var platforms=[]; 		 //The platform objects will be loaded into this
 var missedPlatforms = 0; //The number of platforms player is NOT on top of. (if n != active, player.falling = true)
 var activePlatforms = 0; //The number of platforms the player is near
 
@@ -35,7 +45,11 @@ var fps = 0;
 var fpsCounter = 0;
 var fpsTimer = 0;
 
-//Game startup 
+/**
+ * Start the game. Call this after the script has been loaded.
+ * This will initialize the game canvas, add key handlers and start the main loop.
+ * The level is loaded with AJAX in the onload function.
+ */
 function init() {
 	c=document.getElementById("gameCanvas");
 	ctx=c.getContext("2d");
@@ -93,7 +107,9 @@ function gameTime(){
 	return (new Date()).valueOf() - startTime;
 }
 
-/* Camera Object */
+/** 
+ * The camera object
+ */
 var Camera = {
 	x:0,
 	y:0,
@@ -106,7 +122,9 @@ var Camera = {
 	}
 }
 
-/* Player Object */
+/**
+ * The player object
+ */
 var player = {
 	x:100,			//x pos
 	y:100,			//y pos
@@ -164,6 +182,20 @@ var player = {
 	}
 };
 
+/**
+ * Enemy object
+ */
+var Enemy = function(pid,px,py) {
+	
+}
+
+/**
+ * An item that can be touched by the player to gain or lose points
+ * @param {int} pid The unique id of the object in the collectables[] array
+ * @param {int} px The x position
+ * @param {int} py The y position
+ * @param {int} The score modifier
+ */
 var Collectable = function(pid,px,py,value) {
 	this.id 	=	pid;
 	this.x 		= 	+px;
@@ -191,7 +223,16 @@ var Collectable = function(pid,px,py,value) {
 	}
 }
 
-//Generic rectangular platform
+/**
+ * Our base platform object
+ * Can be extended by pushing a child object to the platforms[] array
+ * Use startstep() for custom step instructions to be executed BEFORE collision detection
+ * @param {int} pid The ID of the platform (used in platforms[])
+ * @param {int} px The x position (top left corner)
+ * @param {int} py The y position (top let corner)
+ * @param {int} pw The platform's width
+ * @param {int} ph The platform's height
+ */
 var Platform = function(pid,px,py,pw,ph) {
 	this.id =	pid;
 	this.x 	=	+px;		//X Pos
@@ -211,13 +252,18 @@ var Platform = function(pid,px,py,pw,ph) {
 	this.startstep = function() { };
 };
 
+/**
+ * Startstep(); should only be used for child objects
+ */
 Platform.prototype.startstep = function() {
 	//Nothing
 };
 
-/* 	Platform step event
-	Runs collision detection, etc.
-*/
+
+/**
+ * Base platform step event
+ * This handles collision detection. Use startstep() to add custom instructions to child objects
+ */
 Platform.prototype.step = function() {
 		//Check if player is close to platform before we calculate distance.
 		if(distance_between(this,player) > this.checkDistance) {
@@ -293,16 +339,28 @@ Platform.prototype.step = function() {
 		}
 	};
 	
-//Platform draw event
+/**
+ * Draw the platform
+ */
 Platform.prototype.draw = function() {
-//	if(this.x > Camera.x && this.x < Camera.x+Camera.width) {
-		ctx.fillStyle=this.color;
-		ctx.fillRect(this.x-Camera.x,this.y-Camera.y,this.width,this.height);
-//	}
+	ctx.fillStyle=this.color;
+	ctx.fillRect(this.x-Camera.x,this.y-Camera.y,this.width,this.height);
 };
 
 
-
+/**
+ * Moving Platform Objects
+ * Branch off of the platform object and its prototype for collision. Has its own motion controls.
+ * These parameters should be filled automatically by loadlevel();
+ * @param {int} pid The platform id stored in platforms[]
+ * @param {int} px The starting x position
+ * @param {int} py The starting y position
+ * @param {int} pw Platform width (from left side)
+ * @param {int} ph Platform height (from top left corner)
+ * @param {int} pdir Axis the platform moves along (1:y-axis, 2:x-axis)
+ * @param {int} pspd The amount the platform moves each step
+ * @param {int} pendmove The x or y position (pending on pdir) at which the platform reverses motion
+ */
 var MovingPlatform = function(pid,px,py,pw,ph,pdir,pspd,pendmove) {
 	this.id =		+pid;
 	this.x 	=		+px;		//X Pos
@@ -439,11 +497,46 @@ function draw(drawTime) {
 	UpdateDebug(drawTime);
 }
 
-//Calculate and return the distance between two objects with x and y coordinates
+/**
+ * Calculate and return the distance between two objects using their x and y coordinates
+ * @param {object} object1
+ * @param {object} object2
+ */
 function distance_between(object1,object2) {
 	return distance = Math.sqrt(Math.pow(object2.x-object1.x,2) + Math.pow(object2.y-object1.y,2));
 }
 
+/**
+ * Returns true if a position will result in a collision with object2
+ * Two parameters	(Object1, Object2) - Check if two objects are colliding
+ * Three Parameters	(x, y, Object2) - Check if a point will collide with Object 2
+ * -Objects MUST have the following properties: x,y,width,height
+ * 
+ * @param {object} o1 	Object1	OR	{number} x
+ * @param {object} o2 	Object2	OR	{number} y
+ * @param {object} obj2 Object2 (OPTIONAL)
+ */
+function place_meeting(o1,o2,obj2) {
+	//Check for collision between two objects
+	if(obj2 == null) {
+		if(o1.x+o1.width >= o2.x && o1.x <= o2.x+o2.width && o1.y+o1.height >= o2.y && o1.y <= o2.y+o2.height)
+			return true;
+		else
+			return false;
+	}
+	//Check for point collision
+	else {
+		if(o1 >= obj2.x && o1 <= obj2.x+obj2.width && o2>=obj2.y && o2<=obj2.y+obj2.height)
+			return true;
+		else
+			return false;
+	}
+}
+
+/**
+ * Updates the debug information in our sidebar
+ * @param drawTime
+ */
 function UpdateDebug(drawTime) {
 	document.getElementById("player_x").innerHTML=player.x;
 	document.getElementById("player_y").innerHTML=player.y;
@@ -461,6 +554,10 @@ function UpdateDebug(drawTime) {
 	document.getElementById("score").innerHTML=score;
 }
 
+/**
+ * Loads the level from a text file. This is called from init();
+ * @param {String} allText The text file loaded in init
+ */
 function loadLevel(allText) {
 	var allTextLines = allText.split(/\r\n|\n/);
 	var headers = allTextLines[0].split(',');
@@ -494,7 +591,9 @@ function loadLevel(allText) {
 	}
 }
 
-
+/**
+ * Import the level data file and process it with loadlevel();
+ */
 $(document).ready(function() {
 	$.ajax({
 		type:"GET",
@@ -503,4 +602,6 @@ $(document).ready(function() {
 		success: function(data) { loadLevel(data); }
 	});
 });
+
+/*Start the game*/
 init();
