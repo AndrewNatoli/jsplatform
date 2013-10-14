@@ -288,14 +288,12 @@ Platform.prototype.step = function() {
 			player.falling = false;
 			//Make sure the player won't be falling through the platform...
 			if(player.falling == true) {
-				if((player.x+player.width > this.x && player.x < this.x+this.width)) {
 					if(player.yspeed > this.y-(player.y+player.width)) {
 						player.yspeed = this.y-(player.y+player.width);
 					}
-				}
 			}
 			//If our calculations failed (probably due to multiple platforms being involved) fix the error!
-			if((player.y+player.width > this.y) && (player.y < this.y) && (player.x+player.width > this.x)) {
+			if((player.y+player.width > this.y)) {
 				player.y = this.y-player.width;
 			}
 			this.color="#00CC00";
@@ -315,6 +313,8 @@ Platform.prototype.step = function() {
 			player.yspeed = player.yspeed*-1;
 			collisionDebug="BOTTOM";
 			collisionIndex=this.id;
+			if(player.y<=this.y+this.height)
+				player.y=this.y+this.height+1;
 		}
 
 		//Check if the player is hitting the left side of the platform
