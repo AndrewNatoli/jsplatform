@@ -8,6 +8,17 @@
  * Feel free to contribute! :D
  */
 
+//Set up the object container and object types
+var OBJECT_TYPES 	 = 4;
+var TYPE_PLAYER 	 = 0;
+var TYPE_ENEMIES 	 = 1;
+var TYPE_PLATFORMS 	 = 2;
+var TYPE_COLLECTIBLES= 3;
+
+var gameObjects = []; //We'll initialize the rows in init();
+
+var LEVEL_FILE = "level.txt";
+
 var c, ctx; //Canvas
 var gameTimer;
 var startTime;
@@ -17,13 +28,10 @@ var collisionDebug = "";
 var collisionIndex = -1; //Used to tell us the platform ID the player object came in contact with
 
 
-//Collision detection and platform objects
-var platforms=[]; 		 //The platform objects will be loaded into this
+//Collision detection
 var missedPlatforms = 0; //The number of platforms player is NOT on top of. (if n != active, player.falling = true)
 var activePlatforms = 0; //The number of platforms the player is near
 
-//Collectables
-var collectables=[];
 var score = 0;
 
 //Controls
@@ -51,18 +59,28 @@ var fpsTimer = 0;
  * The level is loaded with AJAX in the onload function.
  */
 function init() {
+	//Initialize the game canvas
 	c=document.getElementById("gameCanvas");
 	ctx=c.getContext("2d");
 	startTime = (new Date()).valueOf();
 	
+	//Register keystroke listeners
 	document.addEventListener("keydown", function(e) {
 		keysDown[e.keyCode] = true;
 	},false); 
-	
 	document.addEventListener("keyup", function(e) {
 		keysDown[e.keyCode] = false;
 	},false);
 	
+	//Initialize the rows for object types
+	for (var i=0;i<OBJECT_TYPES;i++) {
+	     gameObjects[i] = [];
+	}
+	
+	//Load the level
+	fetchLevel(LEVEL_FILE);
+	
+	//Activate the main loop
 	mainLoop();
 }
 
@@ -185,8 +203,40 @@ var player = {
 /**
  * Enemy object
  */
-var Enemy = function(pid,px,py) {
+function Enemy(pid,px,py) {
+	this.pid	=	pid;
+	this.x		= 	+px;
+	this.y		=	+py;
+	this.width	= 	25;
+	this.height	= 	25;
+	this.xspeed = 	0;
+	this.yspeed = 	0;
+	this.gravity = 	6.0;
+	this.falling =  true;
 	
+	//Start Step
+	this.startstep = function() {
+		
+	}
+	
+	//Step
+	this.step = function(deltaTime) {
+		//Control our falling
+		if(this.falling == true) //Start Falling
+			this.yspeed+=this.gravity;
+		else if(this.falling == false) //Stop Falling
+			this.yspeed = 0;
+		
+		//Finally, update our position based on speed
+		this.x+=this.xspeed * deltaTime;
+		this.y+=this.yspeed * deltaTime;
+	}
+	
+	//Draw
+	this.draw = function() {
+		ctx.fillStyle="#DD00FF";
+		ctx.fillRect(this.x-Camera.x,this.y-Camera.y,this.width,this.width);
+	}
 }
 
 /**
@@ -196,7 +246,7 @@ var Enemy = function(pid,px,py) {
  * @param {int} py The y position
  * @param {int} The score modifier
  */
-var Collectable = function(pid,px,py,value) {
+function Collectable(pid,px,py,value) {
 	this.id 	=	pid;
 	this.x 		= 	+px;
 	this.y 		= 	+py;
@@ -206,6 +256,10 @@ var Collectable = function(pid,px,py,value) {
 	this.color 	=	'#DDDD00';
 	this.active = 	true;
 
+	this.startstep = function(deltaTime) {
+		
+	}
+	
 	this.step = function(deltaTime) {
 		if(this.active == true) {
 			if(distance_between(this,player) < player.width) {
@@ -233,7 +287,7 @@ var Collectable = function(pid,px,py,value) {
  * @param {int} pw The platform's width
  * @param {int} ph The platform's height
  */
-var Platform = function(pid,px,py,pw,ph) {
+function Platform(pid,px,py,pw,ph) {
 	this.id =	pid;
 	this.x 	=	+px;		//X Pos
 	this.y 	=	+py;		//Y Pos
@@ -361,7 +415,7 @@ Platform.prototype.draw = function() {
  * @param {int} pspd The amount the platform moves each step
  * @param {int} pendmove The x or y position (pending on pdir) at which the platform reverses motion
  */
-var MovingPlatform = function(pid,px,py,pw,ph,pdir,pspd,pendmove) {
+function MovingPlatform(pid,px,py,pw,ph,pdir,pspd,pendmove) {
 	this.id =		+pid;
 	this.x 	=		+px;		//X Pos
 	this.y 	=		+py;		//Y Pos
@@ -463,12 +517,11 @@ function step(deltaTime) {
 	//Reset the draw interval
 	//window.clearInterval("gameTimer");		
 	missedPlatforms=0;
-	for(var i=0; i<platforms.length; i++) {
-		platforms[i].startstep();
-		platforms[i].step();
-	}	
-	for(var i=0; i<collectables.length; i++) {
-		collectables[i].step();
+	for(var i=0; i<gameObjects.length; i++) {
+		for(var j=0; j<gameObjects[i].length; j++) {
+			gameObjects[i][j].startstep();
+			gameObjects[i][j].step();
+		}
 	}
 	player.step(deltaTime);
 	Camera.step(deltaTime);
@@ -488,12 +541,11 @@ function draw(drawTime) {
 	ctx.fillRect(0,0,c.width,c.height);
 	//Now draw :D
 	player.draw();
-	for(i=0; i<platforms.length; i++) {
-		platforms[i].draw();
-	}		
-	for(i=0; i<collectables.length; i++) {
-		collectables[i].draw();
-	}	
+	for(var i=0; i<gameObjects.length; i++) {
+		for(var j=0; j<gameObjects[i].length; j++) {
+			gameObjects[i][j].draw();
+		}
+	}
 	UpdateDebug(drawTime);
 }
 
@@ -568,23 +620,22 @@ function loadLevel(allText) {
 			switch (data[0]) {
 				//Create a platform
 				case "0":
-					platforms.push(new Platform(i,data[1],data[2],data[3],data[4]));	
+					gameObjects[TYPE_PLATFORMS].push(new Platform(i,data[1],data[2],data[3],data[4]));	
 					activePlatforms++;
 				break;
 
 				//Create a moving platform
 				case "1":
-					platforms.push(new MovingPlatform(i,data[1],data[2],data[3],data[4],data[5],data[6],data[7],data[8]));	
+					gameObjects[TYPE_PLATFORMS].push(new MovingPlatform(i,data[1],data[2],data[3],data[4],data[5],data[6],data[7],data[8]));	
 					activePlatforms++;
 				break;
-
+				//Create a collectable
 				case "2":
-					//							   pid px 	  py 	  value
-					collectables.push(new Collectable(i,data[1],data[2],data[3]));
+					gameObjects[TYPE_COLLECTIBLES].push(new Collectable(i,data[1],data[2],data[3]));
 				break;
-
+				//Unknown type... show an error.
 				default:
-					alert("Unknown platform type at line " + i);
+					alert("Unknown object type at line " + i);
 				break;
 			}
 		}
@@ -594,14 +645,14 @@ function loadLevel(allText) {
 /**
  * Import the level data file and process it with loadlevel();
  */
-$(document).ready(function() {
+function fetchLevel(file) {
 	$.ajax({
 		type:"GET",
-		url:"level.txt",
+		url:file,
 		dataType:"text",
 		success: function(data) { loadLevel(data); }
 	});
-});
+}
 
 /*Start the game*/
 init();
