@@ -82,6 +82,9 @@ function init() {
 	
 	//Activate the main loop
 	mainLoop();
+
+	//Add an enemy
+	gameObjects[TYPE_ENEMIES].push(new Enemy(0,175,100));
 }
 
 /**
@@ -149,6 +152,7 @@ var player = {
 	xspeed:0,		//Horizontal Speed
 	yspeed:0,		//Veritcal Speed
 	width:25,		//The width of our block
+	height:25,
 	falling:true,	//Whether or not we're falling
 	gravity:6.0,
 	
@@ -213,6 +217,9 @@ function Enemy(pid,px,py) {
 	this.yspeed = 	0;
 	this.gravity = 	6.0;
 	this.falling =  true;
+	this.moving  = false;
+	this.onPlatform = -1;
+	this.checkedPlatforms = 0;
 	
 	//Start Step
 	this.startstep = function() {
@@ -221,21 +228,109 @@ function Enemy(pid,px,py) {
 	
 	//Step
 	this.step = function(deltaTime) {
-		//Control our falling
-		if(this.falling == true) //Start Falling
-			this.yspeed+=this.gravity;
-		else if(this.falling == false) //Stop Falling
-			this.yspeed = 0;
+		//Check if we're falling
+		for(var i=0; i<gameObjects[TYPE_PLATFORMS].length; i++) {
+			if(place_meeting(this.x+(this.width/2),this.y+this.height+1,gameObjects[TYPE_PLATFORMS][i])) {
+				this.falling=false;
+				break;
+			}
+			else
+				this.falling=true; //Fall
+		}
+		
+		//Build up fall speed or stop if we landed
+		(this.falling == true) ? this.yspeed+=this.gravity : this.yspeed =0;
+
+		//Execute AI
+		this.AI();		
 		
 		//Finally, update our position based on speed
 		this.x+=this.xspeed * deltaTime;
 		this.y+=this.yspeed * deltaTime;
 	}
-	
+
 	//Draw
 	this.draw = function() {
 		ctx.fillStyle="#DD00FF";
 		ctx.fillRect(this.x-Camera.x,this.y-Camera.y,this.width,this.width);
+	}
+}
+
+//Keeping this separate from the main function for now because it's going to be big.
+Enemy.prototype.AI = function() {
+	//If we're on the ground
+	if(this.falling == false) {
+		//If we're not moving horizontally
+		if(this.moving == false) {
+			//Start moving somewhere
+			for(var i=0; i<gameObjects[TYPE_PLATFORMS].length; i++) {
+				//Check right
+				if(place_meeting(this.x+(this.width*2),this.y+this.height+1,gameObjects[TYPE_PLATFORMS][i])) {
+					this.xspeed = 100;
+					this.moving = true;
+				}
+				//Check left
+				else if(place_meeting(this.x-(this.width*2),this.y+this.height+1,gameObjects[TYPE_PLATFORMS][i])) {
+					this.xspeed = -100;
+					this.moving = true;
+				}
+			}
+		}
+		//If we're already moving...
+		else {
+			//Check if there's a floor ahead of us
+			this.checkedPlatforms = 0;
+			for(var i=0; i<gameObjects[TYPE_PLATFORMS].length; i++) {
+				//If we're moving right
+				if(this.xspeed > 0) {
+					if(place_meeting(this.x+this.width,this.y+this.height+10,gameObjects[TYPE_PLATFORMS][i])) {
+						this.onPlatform = i; //Let us know the platform we're on
+						break;
+					}
+					//Roads out... what do we do?
+					else {
+						if(i != this.onPlatform) {
+							//Check if we can jump to a platform
+							if(place_meeting(this.x+(this.width+150),this.y+this.height+10,gameObjects[TYPE_PLATFORMS][i])) {
+								this.yspeed = -500;
+								this.falling = true;	
+							}
+							//Check if there's a platform below
+							else if(place_meeting(this.x+(this.width*2),this.y+this.height+gameObjects[TYPE_PLATFORMS][this.onPlatform].height+5,gameObjects[TYPE_PLATFORMS][i])) {
+								//Keep going
+							}
+							//Is there a platform above?
+							else if(place_meeting(this.x+(this.width*4),this.y-this.height*5,gameObjects[TYPE_PLATFORMS][i])) {
+								this.yspeed = -500;
+								this.falling = true;
+							}
+							else {
+								//Only turn around if we've checked ALL of the other platforms for possibilities and there were none.
+								this.checkedPlatforms++;
+								if(this.checkedPlatforms >= gameObjects[TYPE_PLATFORMS].length-1)  {
+									this.xspeed *= -1;
+								}
+							}
+						}
+					}
+				}
+				
+				//If we're moving left
+				else {
+
+				}
+			}
+		}
+	}
+	//If we're airborne
+	else {
+		//Did we land on the player?
+		if(place_meeting(this.x+(this.width/2),this.y+this.height+1,player) || distance_between(gameObjects[TYPE_ENEMIES][this.pid],player) < player.width) {
+			if(this.y+this.height < player.y && this.yspeed > 0) {
+				this.falling = false;
+				this.yspeed = 0;
+			}
+		}
 	}
 }
 
@@ -519,8 +614,8 @@ function step(deltaTime) {
 	missedPlatforms=0;
 	for(var i=0; i<gameObjects.length; i++) {
 		for(var j=0; j<gameObjects[i].length; j++) {
-			gameObjects[i][j].startstep();
-			gameObjects[i][j].step();
+			gameObjects[i][j].startstep(deltaTime);
+			gameObjects[i][j].step(deltaTime);
 		}
 	}
 	player.step(deltaTime);
