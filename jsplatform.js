@@ -295,31 +295,27 @@ Enemy.prototype.AI = function() {
 			//Check if there's a floor ahead of us
 			this.checkedPlatforms = 0;
 			for(var i=0; i<gameObjects[TYPE_PLATFORMS].length; i++) {
+				this.checkedPlatforms++;
 				if(place_meeting(this.x+(this.width/2),this.y+this.height+2,gameObjects[TYPE_PLATFORMS][i])) {
 					this.onPlatform = i; //Let us know the platform we're on
 				}
 				//Roads out... what do we do?
-				else {
-					if(i != this.onPlatform) {
-						//Check if we can jump to a platform
-						if(!place_meeting(this.motionSide+(10*this.dir),this.y+this.height+2,gameObjects[TYPE_PLATFORMS][this.onPlatform]) && place_meeting(this.motionSide+(150*this.dir),this.y+this.height+10,gameObjects[TYPE_PLATFORMS][i])) {
-							this.yspeed = -500;
-							this.falling = true;	
-						}
-						//Is there a platform above?
-						else if(place_meeting(this.motionSide+((this.width*2)*this.dir),this.y-(this.height*3),gameObjects[TYPE_PLATFORMS][i])) {
-							this.yspeed = -500;
-							this.falling = true;
-						}
-						else {
-							//Only turn around if we've checked ALL of the other platforms for possibilities and there were none.
-							this.checkedPlatforms++;
-							if(this.checkedPlatforms >= gameObjects[TYPE_PLATFORMS].length)  {
-								this.xspeed *= -1;
-							}
-						}
+				if(i != this.onPlatform) {
+					this.checkedPlatforms++;
+					//Check if we can jump to a platform
+					if(!place_meeting(this.motionSide+(10*this.dir),this.y+this.height+2,gameObjects[TYPE_PLATFORMS][this.onPlatform]) && place_meeting(this.motionSide+(150*this.dir),this.y+this.height+10,gameObjects[TYPE_PLATFORMS][i])) {
+						this.yspeed = -500;
+						this.falling = true;	
 					}
-				}
+					//else if(this.falling == false && !place_meeting(this.motionSide+(10*this.dir),this.y+this.height+4,gameObjects[TYPE_PLATFORMS][this.onPlatform])) {
+					//	this.xspeed *= -1;
+					//}
+					//Is there a platform above?
+					else if(place_meeting(this.motionSide+((this.width*2)*this.dir),this.y-(this.height*3),gameObjects[TYPE_PLATFORMS][i])) {
+						this.yspeed = -500;
+						this.falling = true;
+					}			
+				}		
 			}
 		}
 	}
