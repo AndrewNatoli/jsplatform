@@ -89,6 +89,9 @@ function init() {
 	//Add an enemy
 	gameObjects[TYPE_ENEMIES].push(new Enemy(0,175,100,ENEMY_AI_ADVENTURE));
 	gameObjects[TYPE_ENEMIES].push(new Enemy(1,200,100,ENEMY_AI_TURNAROUND));
+	gameObjects[TYPE_ENEMIES][1].color = "#33DDEE";
+	gameObjects[TYPE_ENEMIES].push(new Enemy(1,400,100,ENEMY_AI_TURNAROUND));
+	gameObjects[TYPE_ENEMIES][2].color = "#BBAAFF";
 }
 
 /**
@@ -96,7 +99,6 @@ function init() {
  * Simulates Unity's way of updating (http://answers.unity3d.com/questions/10993/whats-the-difference-between-update-and-fixedupdat.html)
  * - FixedStep will always get called at a specific time each second (determined by fixedStepTime)
  * - Draw and update get called as frequently as they can afterwards
- *coo
  */
 function mainLoop(){
 	var currentTIme = gameTime();
@@ -223,6 +225,7 @@ function Enemy(pid,px,py,aiType) {
 	this.gravity = 	6.0;
 	this.falling =  true;
 	this.moving  = false;
+	this.color 	= "#DD00FF";
 	this.onPlatform = -1;
 	this.checkedPlatforms = 0;
 	this.dir 		= -1; //Direction multiplier (Left: -1, Right:1)
@@ -274,7 +277,7 @@ function Enemy(pid,px,py,aiType) {
 
 	//Draw
 	this.draw = function() {
-		ctx.fillStyle="#DD00FF";
+		ctx.fillStyle=this.color;
 		ctx.fillRect(this.x-Camera.x,this.y-Camera.y,this.width,this.width);
 	}
 }
