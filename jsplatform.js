@@ -85,16 +85,6 @@ function init() {
 	
 	//Activate the main loop
 	mainLoop();
-
-	//Add an enemy
-	gameObjects[TYPE_ENEMIES].push(new Enemy(0,175,100,ENEMY_AI_ADVENTURE));
-	gameObjects[TYPE_ENEMIES].push(new Enemy(1,200,100,ENEMY_AI_TURNAROUND));
-	gameObjects[TYPE_ENEMIES][1].color = "#33DDEE";
-	gameObjects[TYPE_ENEMIES].push(new Enemy(2,400,100,ENEMY_AI_TURNAROUND));
-	gameObjects[TYPE_ENEMIES][2].color = "#BBAAFF";
-	gameObjects[TYPE_ENEMIES].push(new Enemy(3,100,100,ENEMY_AI_TURNAROUND));
-	gameObjects[TYPE_ENEMIES].push(new Enemy(4,050,100,ENEMY_AI_TURNAROUND));
-	gameObjects[TYPE_ENEMIES][4].color = "#AABBEE";
 }
 
 /**
@@ -216,7 +206,7 @@ var player = {
 /**
  * Enemy object
  */
-function Enemy(pid,px,py,aiType) {
+function Enemy(pid,px,py,aiType,color) {
 	this.pid	=	pid;
 	this.x		= 	+px;
 	this.y		=	+py;
@@ -228,7 +218,7 @@ function Enemy(pid,px,py,aiType) {
 	this.gravity = 	6.0;
 	this.falling =  true;
 	this.moving  = false;
-	this.color 	= "#DD00FF";
+	this.color 	=  color;
 	this.onPlatform = -1;
 	this.checkedPlatforms = 0;
 	this.dir 		= -1; //Direction multiplier (Left: -1, Right:1)
@@ -248,8 +238,8 @@ function Enemy(pid,px,py,aiType) {
 	this.step = function(deltaTime) {
 
 		//Check if we're falling
-		for(var i=0; i<gameObjects[TYPE_PLATFORMS].length; i++) {
-			if(place_meeting(this.x+(this.width/2),this.y+this.height+1,gameObjects[TYPE_PLATFORMS][i])) {
+		for(var i=0; i<getNumberOfPlatforms(); i++) {
+			if(place_meeting(this.x+(this.width/2),this.y+this.height+1,getPlatform(i))) {
 				this.falling=false;
 				break;
 			}
@@ -292,14 +282,14 @@ Enemy.prototype.AI = function() {
 		//If we're not moving horizontally
 		if(this.moving == false) {
 			//Start moving somewhere
-			for(var i=0; i<gameObjects[TYPE_PLATFORMS].length; i++) {
+			for(var i=0; i<getNumberOfPlatforms(); i++) {
 				//Can we go right? Go that way!
-				if(place_meeting(this.x+(this.width*2),this.y+this.height+4,gameObjects[TYPE_PLATFORMS][i])) {
+				if(place_meeting(this.x+(this.width*2),this.y+this.height+4,getPlatform(i))) {
 					this.xspeed = 100;
 					this.moving = true;
 				}
 				//See if we can go left...
-				else if(place_meeting(this.x-(this.width*2),this.y+this.height+4,gameObjects[TYPE_PLATFORMS][i])) {
+				else if(place_meeting(this.x-(this.width*2),this.y+this.height+4,getPlatform(i))) {
 					this.xspeed = -100;
 					this.moving = true;
 				}
@@ -309,11 +299,11 @@ Enemy.prototype.AI = function() {
 		else {
 			//Check if there's a floor ahead of us
 			this.checkedPlatforms = 0; //Counter that determines if we've checked every possible platform for a collision
-			for(var i=0; i<gameObjects[TYPE_PLATFORMS].length; i++) {
+			for(var i=0; i<getNumberOfPlatforms(); i++) {
 				this.checkedPlatforms++;
 
 				//Make sure we're currently on a platform and make a note of which one it is
-				if(place_meeting(this.x+(this.width/2),this.y+this.height+2,gameObjects[TYPE_PLATFORMS][i])) {
+				if(place_meeting(this.x+(this.width/2),this.y+this.height+2,getPlatform(i))) {
 					if(i != this.onPlatform)
 						this.onPlatform = i;
 				}
@@ -334,7 +324,7 @@ Enemy.prototype.AI = function() {
 						this.checkedPlatforms++; //Log that we've been on this platform
 					}
 					//Check if we can jump to a platform
-					if(!place_meeting(this.motionSide+(10*this.dir),this.y+this.height+2,gameObjects[TYPE_PLATFORMS][this.onPlatform]) && place_meeting(this.motionSide+(150*this.dir),this.y+this.height+10,gameObjects[TYPE_PLATFORMS][i])) {
+					if(!place_meeting(this.motionSide+(10*this.dir),this.y+this.height+2,gameObjects[TYPE_PLATFORMS][this.onPlatform]) && place_meeting(this.motionSide+(150*this.dir),this.y+this.height+10,getPlatform(i))) {
 						this.yspeed = -500;
 						this.falling = true;	
 					}
@@ -342,7 +332,7 @@ Enemy.prototype.AI = function() {
 					//	this.xspeed *= -1;
 					//}
 					//Is there a platform above?
-					else if(place_meeting(this.motionSide+((this.width*2)*this.dir),this.y-(this.height*3),gameObjects[TYPE_PLATFORMS][i])) {
+					else if(place_meeting(this.motionSide+((this.width*2)*this.dir),this.y-(this.height*3),getPlatform(i))) {
 						this.yspeed = -500;
 						this.falling = true;
 					}
@@ -357,13 +347,13 @@ Enemy.prototype.AI = function() {
 
 				if(this.xspeed < 0) {	//If we're moving left...
 					//Turn around if we hit a wall while moving to the left
-					if(this.x < gameObjects[TYPE_PLATFORMS][i].x+gameObjects[TYPE_PLATFORMS][i].width && this.y+this.height > gameObjects[TYPE_PLATFORMS][i].y && this.y < gameObjects[TYPE_PLATFORMS][i].y+gameObjects[TYPE_PLATFORMS][i].height) {
+					if(this.x < getPlatform(i).x+getPlatform(i).width && this.y+this.height > getPlatform(i).y && this.y < getPlatform(i).y+getPlatform(i).height) {
 						this.xspeed = this.xspeed * -1;
 					}
 				}
 				else if(this.xspeed > 0) { //If we're moving right...
 					//Turn around if we hit a wall while moving to the right
-					if(this.x+this.width > gameObjects[TYPE_PLATFORMS][i].x && this.y+this.height > gameObjects[TYPE_PLATFORMS][i].y && this.y < gameObjects[TYPE_PLATFORMS][i].y+gameObjects[TYPE_PLATFORMS][i].height) {
+					if(this.x+this.width > getPlatform(i).x && this.y+this.height > getPlatform(i).y && this.y < getPlatform(i).y+getPlatform(i).height) {
 						this.speed = this.xspeed * -1;
 					}						
 				}
@@ -387,11 +377,11 @@ Enemy.prototype.checkEndOfPlatform = function(i) {
 		If there isn't a platform ahead of us, change direction
 	*/
 	ctx.fillStyle="#000000";
-	if(!place_meeting(this.x+(this.width/2)+(this.xspeed/3),this.y+this.height+2,gameObjects[TYPE_PLATFORMS][i])) {
+	if(!place_meeting(this.x+(this.width/2)+(this.xspeed/3),this.y+this.height+2,getPlatform(i))) {
 		ctx.fillStyle="#FF0000";
-		if(place_meeting(this.x+(this.width/2),this.y+this.height+2,gameObjects[TYPE_PLATFORMS][i])) {
+		if(place_meeting(this.x+(this.width/2),this.y+this.height+2,getPlatform(i))) {
 			ctx.fillStyle="#00FF00";
-			if(gameObjects[TYPE_PLATFORMS][i].isMovingPlatform == false) { 
+			if(getPlatform(i).isMovingPlatform == false) { 
 				ctx.fillStyle="#0000FF";
 				return true;
 			}
@@ -770,9 +760,6 @@ function UpdateDebug(drawTime) {
 	document.getElementById("collision_debug").innerHTML=collisionDebug;
 	document.getElementById("collision_index").innerHTML=collisionIndex;
 	document.getElementById("score").innerHTML=score;
-
-	document.getElementById("enemyPlatform").innerHTML=gameObjects[TYPE_ENEMIES][0].onPlatform;
-	document.getElementById("enemySpeed").innerHTML=gameObjects[TYPE_ENEMIES][0].xspeed;
 }
 
 /**
@@ -789,18 +776,22 @@ function loadLevel(allText) {
 			switch (data[0]) {
 				//Create a platform
 				case "0":
-					gameObjects[TYPE_PLATFORMS].push(new Platform(i,data[1],data[2],data[3],data[4]));	
+					gameObjects[TYPE_PLATFORMS].push(new Platform(getNumberOfPlatforms(),data[1],data[2],data[3],data[4]));	
 					activePlatforms++;
 				break;
 
 				//Create a moving platform
 				case "1":
-					gameObjects[TYPE_PLATFORMS].push(new MovingPlatform(i,data[1],data[2],data[3],data[4],data[5],data[6],data[7],data[8]));	
+					gameObjects[TYPE_PLATFORMS].push(new MovingPlatform(getNumberOfPlatforms(),data[1],data[2],data[3],data[4],data[5],data[6],data[7],data[8]));	
 					activePlatforms++;
 				break;
 				//Create a collectable
 				case "2":
 					gameObjects[TYPE_COLLECTIBLES].push(new Collectable(i,data[1],data[2],data[3]));
+				break;
+				//Create an enemy
+				case "3":
+					gameObjects[TYPE_ENEMIES].push(new Enemy(gameObjects[TYPE_ENEMIES].length,data[1],data[2],data[3],data[4]));
 				break;
 				//Unknown type... show an error.
 				default:
@@ -821,6 +812,22 @@ function fetchLevel(file) {
 		dataType:"text",
 		success: function(data) { loadLevel(data); }
 	});
+}
+
+/**
+ * getPlatform
+ * A much cleaner way of referencing a specific platform
+ */
+function getPlatform(i) {
+	return gameObjects[TYPE_PLATFORMS][i];
+}
+
+/**
+ * getNumberOfPlatforms
+ * Returns the number of platforms loaded into the level
+ */
+function getNumberOfPlatforms() {
+	return gameObjects[TYPE_PLATFORMS].length;
 }
 
 /*Start the game*/
