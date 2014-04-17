@@ -15,6 +15,9 @@ var TYPE_ENEMIES 	 = 1;
 var TYPE_PLATFORMS 	 = 2;
 var TYPE_COLLECTIBLES= 3;
 
+var ENEMY_AI_TURNAROUND = 0;	//The enemy will only move about its current platform
+var ENEMY_AI_ADVENTURE	= 1;	//The enemy will try to adventure around the map
+
 var gameObjects = []; //We'll initialize the rows in init();
 
 var LEVEL_FILE = "level.txt";
@@ -84,7 +87,8 @@ function init() {
 	mainLoop();
 
 	//Add an enemy
-	gameObjects[TYPE_ENEMIES].push(new Enemy(0,175,100));
+	gameObjects[TYPE_ENEMIES].push(new Enemy(0,175,100,ENEMY_AI_ADVENTURE));
+	gameObjects[TYPE_ENEMIES].push(new Enemy(1,200,100,ENEMY_AI_TURNAROUND));
 }
 
 /**
@@ -207,7 +211,7 @@ var player = {
 /**
  * Enemy object
  */
-function Enemy(pid,px,py) {
+function Enemy(pid,px,py,aiType) {
 	this.pid	=	pid;
 	this.x		= 	+px;
 	this.y		=	+py;
@@ -223,10 +227,15 @@ function Enemy(pid,px,py) {
 	this.checkedPlatforms = 0;
 	this.dir 		= -1; //Direction multiplier (Left: -1, Right:1)
 	this.motionSide = this.x; //this.x if we're moving left, this.x+this.width if moving right
+	this.aiType	=	aiType; //Default AI type
 	
 	//Start Step
 	this.startstep = function() {
 		
+	}
+
+	this.setAiType = function(aiType) {
+		this.AIType = aiType;
 	}
 	
 	//Step
@@ -278,12 +287,12 @@ Enemy.prototype.AI = function() {
 		if(this.moving == false) {
 			//Start moving somewhere
 			for(var i=0; i<gameObjects[TYPE_PLATFORMS].length; i++) {
-				//Check right
+				//Can we go right? Go that way!
 				if(place_meeting(this.x+(this.width*2),this.y+this.height+4,gameObjects[TYPE_PLATFORMS][i])) {
 					this.xspeed = 100;
 					this.moving = true;
 				}
-				//Check left
+				//See if we can go left...
 				else if(place_meeting(this.x-(this.width*2),this.y+this.height+4,gameObjects[TYPE_PLATFORMS][i])) {
 					this.xspeed = -100;
 					this.moving = true;
@@ -293,15 +302,23 @@ Enemy.prototype.AI = function() {
 		//If we're already moving...
 		else {
 			//Check if there's a floor ahead of us
-			this.checkedPlatforms = 0;
+			this.checkedPlatforms = 0; //Counter that determines if we've checked every possible platform for a collision
 			for(var i=0; i<gameObjects[TYPE_PLATFORMS].length; i++) {
 				this.checkedPlatforms++;
+				//Make sure we're currently on a platform and make a note of which one it is
 				if(place_meeting(this.x+(this.width/2),this.y+this.height+2,gameObjects[TYPE_PLATFORMS][i])) {
-					this.onPlatform = i; //Let us know the platform we're on
+					this.onPlatform = i;
 				}
-				//Roads out... what do we do?
+
+				//If our AI type wants us to stay on the current platform, do so.
+				if(this.aiType == ENEMY_AI_TURNAROUND) {
+					this.checkEndOfPlatform(i);
+					return;
+				}
+
+				//There isn't a platform ahead... where do we go?
 				if(i != this.onPlatform) {
-					this.checkedPlatforms++;
+					this.checkedPlatforms++; //Log that we've been on this platform
 					//Check if we can jump to a platform
 					if(!place_meeting(this.motionSide+(10*this.dir),this.y+this.height+2,gameObjects[TYPE_PLATFORMS][this.onPlatform]) && place_meeting(this.motionSide+(150*this.dir),this.y+this.height+10,gameObjects[TYPE_PLATFORMS][i])) {
 						this.yspeed = -500;
@@ -315,7 +332,7 @@ Enemy.prototype.AI = function() {
 						this.yspeed = -500;
 						this.falling = true;
 					}			
-				}		
+				}	
 			}
 		}
 	}
@@ -327,6 +344,17 @@ Enemy.prototype.AI = function() {
 				this.falling = false;
 				this.yspeed = 0;
 			}
+		}
+	}
+}
+
+Enemy.prototype.checkEndOfPlatform = function(i) {
+	/*
+		If there isn't a platform ahead of us, change direction
+	*/
+	if(!place_meeting(this.x+(this.width/2)+(this.xspeed/3),this.y+this.height+2,gameObjects[TYPE_PLATFORMS][i])) {
+		if(place_meeting(this.x,this.y+this.height+2,gameObjects[TYPE_PLATFORMS][i])) {
+			this.xspeed = this.xspeed * -1;
 		}
 	}
 }
