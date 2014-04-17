@@ -90,8 +90,11 @@ function init() {
 	gameObjects[TYPE_ENEMIES].push(new Enemy(0,175,100,ENEMY_AI_ADVENTURE));
 	gameObjects[TYPE_ENEMIES].push(new Enemy(1,200,100,ENEMY_AI_TURNAROUND));
 	gameObjects[TYPE_ENEMIES][1].color = "#33DDEE";
-	gameObjects[TYPE_ENEMIES].push(new Enemy(1,400,100,ENEMY_AI_TURNAROUND));
+	gameObjects[TYPE_ENEMIES].push(new Enemy(2,400,100,ENEMY_AI_TURNAROUND));
 	gameObjects[TYPE_ENEMIES][2].color = "#BBAAFF";
+	gameObjects[TYPE_ENEMIES].push(new Enemy(3,100,100,ENEMY_AI_TURNAROUND));
+	gameObjects[TYPE_ENEMIES].push(new Enemy(4,050,100,ENEMY_AI_TURNAROUND));
+	gameObjects[TYPE_ENEMIES][4].color = "#AABBEE";
 }
 
 /**
@@ -308,20 +311,23 @@ Enemy.prototype.AI = function() {
 			this.checkedPlatforms = 0; //Counter that determines if we've checked every possible platform for a collision
 			for(var i=0; i<gameObjects[TYPE_PLATFORMS].length; i++) {
 				this.checkedPlatforms++;
+
 				//Make sure we're currently on a platform and make a note of which one it is
 				if(place_meeting(this.x+(this.width/2),this.y+this.height+2,gameObjects[TYPE_PLATFORMS][i])) {
-					this.onPlatform = i;
+					if(i != this.onPlatform)
+						this.onPlatform = i;
 				}
 
 				//If our AI type wants us to stay on the current platform, do so.
 				if(this.aiType == ENEMY_AI_TURNAROUND) {
-					this.checkEndOfPlatform(i);
-					return;
+					if(this.checkEndOfPlatform(i))
+						this.xspeed = this.xspeed * -1;
 				}
-
-				//There isn't a platform ahead... where do we go?
-				if(i != this.onPlatform) {
-					this.checkedPlatforms++; //Log that we've been on this platform
+				else {
+					//There isn't a platform ahead... where do we go?
+					if(i != this.onPlatform) {
+						this.checkedPlatforms++; //Log that we've been on this platform
+					}
 					//Check if we can jump to a platform
 					if(!place_meeting(this.motionSide+(10*this.dir),this.y+this.height+2,gameObjects[TYPE_PLATFORMS][this.onPlatform]) && place_meeting(this.motionSide+(150*this.dir),this.y+this.height+10,gameObjects[TYPE_PLATFORMS][i])) {
 						this.yspeed = -500;
@@ -334,9 +340,9 @@ Enemy.prototype.AI = function() {
 					else if(place_meeting(this.motionSide+((this.width*2)*this.dir),this.y-(this.height*3),gameObjects[TYPE_PLATFORMS][i])) {
 						this.yspeed = -500;
 						this.falling = true;
-					}			
-				}	
-			}
+					}				
+				}
+			}		
 		}
 	}
 	//If we're airborne
@@ -355,11 +361,19 @@ Enemy.prototype.checkEndOfPlatform = function(i) {
 	/*
 		If there isn't a platform ahead of us, change direction
 	*/
+	ctx.fillStyle="#000000";
 	if(!place_meeting(this.x+(this.width/2)+(this.xspeed/3),this.y+this.height+2,gameObjects[TYPE_PLATFORMS][i])) {
-		if(place_meeting(this.x,this.y+this.height+2,gameObjects[TYPE_PLATFORMS][i])) {
-			this.xspeed = this.xspeed * -1;
+		ctx.fillStyle="#FF0000";
+		if(place_meeting(this.x+(this.width/2),this.y+this.height+2,gameObjects[TYPE_PLATFORMS][i])) {
+			ctx.fillStyle="#00FF00";
+			if(gameObjects[TYPE_PLATFORMS][i].isMovingPlatform == false) { 
+				ctx.fillStyle="#0000FF";
+				return true;
+			}
 		}
 	}
+	ctx.fillRect(this.x-Camera.x,this.y-Camera.y+this.height,(this.width/2)+(this.xspeed/3),2);
+	return false;
 }
 
 /**
@@ -418,6 +432,7 @@ function Platform(pid,px,py,pw,ph) {
 	this.height= +ph;		//Height
 	this.color = '#000000';	//Color
 	this.active = true;		//Whether or not this is actively calculating collisions
+	this.isMovingPlatform = false;
 
 	/* The distance that will be used to determine whether or not this platform should
 	be checking for collisions. More calculations up front, less in the long run! */
@@ -548,6 +563,7 @@ function MovingPlatform(pid,px,py,pw,ph,pdir,pspd,pendmove) {
 	this.height= 	+ph;		//Height
 	this.color = 	'#000000';	//Color
 	this.active = 	true;		//Whether or not this is actively calculating collisions
+	this.isMovingPlatform =	true;
 
 	//Motion properties
 	this.direction 	= +pdir;		//Direction of motion (1:y, 2:x)
