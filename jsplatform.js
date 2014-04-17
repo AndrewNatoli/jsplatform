@@ -318,12 +318,17 @@ Enemy.prototype.AI = function() {
 						this.onPlatform = i;
 				}
 
-				//If our AI type wants us to stay on the current platform, do so.
+				/*
+					ENEMY_AI_TURNAROUND logic
+				*/
 				if(this.aiType == ENEMY_AI_TURNAROUND) {
 					if(this.checkEndOfPlatform(i))
 						this.xspeed = this.xspeed * -1;
 				}
-				else {
+				/*
+					ENEMY_AI_ADVENTURE logic
+				*/
+				else if(this.aiType == ENEMY_AI_ADVENTURE) {
 					//There isn't a platform ahead... where do we go?
 					if(i != this.onPlatform) {
 						this.checkedPlatforms++; //Log that we've been on this platform
@@ -340,7 +345,27 @@ Enemy.prototype.AI = function() {
 					else if(place_meeting(this.motionSide+((this.width*2)*this.dir),this.y-(this.height*3),gameObjects[TYPE_PLATFORMS][i])) {
 						this.yspeed = -500;
 						this.falling = true;
-					}				
+					}
+					//Try not to fall off a cliff
+					else if(!place_meeting(this.x+(this.width/2),this.y+this.height+4,gameObjects[TYPE_PLATFORMS][this.onPlatform]))
+						this.xspeed = this.xspeed * -1; //Turn around, fool!
+				}
+
+				/*
+					SHARED logic
+				*/
+
+				if(this.xspeed < 0) {	//If we're moving left...
+					//Turn around if we hit a wall while moving to the left
+					if(this.x < gameObjects[TYPE_PLATFORMS][i].x+gameObjects[TYPE_PLATFORMS][i].width && this.y+this.height > gameObjects[TYPE_PLATFORMS][i].y && this.y < gameObjects[TYPE_PLATFORMS][i].y+gameObjects[TYPE_PLATFORMS][i].height) {
+						this.xspeed = this.xspeed * -1;
+					}
+				}
+				else if(this.xspeed > 0) { //If we're moving right...
+					//Turn around if we hit a wall while moving to the right
+					if(this.x+this.width > gameObjects[TYPE_PLATFORMS][i].x && this.y+this.height > gameObjects[TYPE_PLATFORMS][i].y && this.y < gameObjects[TYPE_PLATFORMS][i].y+gameObjects[TYPE_PLATFORMS][i].height) {
+						this.speed = this.xspeed * -1;
+					}						
 				}
 			}		
 		}
